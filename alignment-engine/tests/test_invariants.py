@@ -1,5 +1,6 @@
 import numpy as np
 from engine.alignment_engine import AlignmentEngine
+from engine.diagnostics import compute_convergence_metric
 
 
 def test_state_stays_in_bounds():
@@ -80,3 +81,30 @@ def test_reproducibility_with_seed():
         assert t1['S_hat'] == t2['S_hat'], "S_hat differs between runs"
         assert t1['D_hat'] == t2['D_hat'], "D_hat differs between runs"
         assert t1['alignment_score'] == t2['alignment_score'], "alignment_score differs between runs"
+
+
+def test_convergence_metric_computation():
+    """
+    Test that convergence metric is computed correctly.
+    """
+    engine = AlignmentEngine()
+    engine.run_simulation(num_steps=100, seed=42)
+    
+    convergence = compute_convergence_metric(engine.telemetry)
+    
+    # Check that required keys are present
+    assert 'status' in convergence
+    assert 'ratio' in convergence
+    assert 'area_first_20pct' in convergence
+    assert 'area_last_20pct' in convergence
+    
+    # Status should be one of the valid values
+    assert convergence['status'] in ['converging', 'diverging', 'stable', 'insufficient_data']
+    
+    # Ratio should be non-negative
+    if convergence['ratio'] is not None:
+        assert convergence['ratio'] >= 0.0, f"Convergence ratio should be non-negative: {convergence['ratio']}"
+    
+    # Areas should be non-negative
+    assert convergence['area_first_20pct'] >= 0.0
+    assert convergence['area_last_20pct'] >= 0.0

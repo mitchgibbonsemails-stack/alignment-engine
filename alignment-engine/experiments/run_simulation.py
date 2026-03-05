@@ -53,8 +53,11 @@ def main():
     print(f"Final S_hat: {engine.x[0]:.4f}")
     print(f"Final D_hat: {engine.x[1]:.4f}")
 
-    # Plot diagnostics
-    plot_simulation(engine.telemetry, save_dir=args.save_dir, show=args.show, run_id=engine.run_id)
+    # Plot diagnostics and collect convergence metric
+    convergence = plot_simulation(engine.telemetry, save_dir=args.save_dir, show=args.show, run_id=engine.run_id)
+    
+    # Store convergence metric in telemetry metadata
+    engine.telemetry_meta['convergence'] = convergence
 
 
 if __name__ == "__main__":

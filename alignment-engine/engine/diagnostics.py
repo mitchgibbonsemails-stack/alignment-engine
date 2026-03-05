@@ -3,6 +3,63 @@ import numpy as np
 import os
 from datetime import datetime
 
+def compute_convergence_metric(telemetry):
+    """
+    Compute convergence metric by comparing phase-space bounding box areas.
+    
+    Returns:
+        dict with 'status' ('converging' or 'diverging') and 'ratio' (area_last / area_first)
+    """
+    if len(telemetry) < 5:
+        return {'status': 'insufficient_data', 'ratio': None}
+    
+    # Extract S_hat and D_hat
+    S_hat = np.array([t['S_hat'] for t in telemetry])
+    D_hat = np.array([t['D_hat'] for t in telemetry])
+    
+    n = len(telemetry)
+    split_idx = max(1, n // 5)  # 20% of steps
+    
+    # First 20% of steps
+    S_first = S_hat[:split_idx]
+    D_first = D_hat[:split_idx]
+    
+    # Last 20% of steps
+    S_last = S_hat[-split_idx:]
+    D_last = D_hat[-split_idx:]
+    
+    # Compute bounding box areas
+    if len(S_first) > 0:
+        area_first = (np.max(S_first) - np.min(S_first)) * (np.max(D_first) - np.min(D_first))
+    else:
+        area_first = 0.0
+    
+    if len(S_last) > 0:
+        area_last = (np.max(S_last) - np.min(S_last)) * (np.max(D_last) - np.min(D_last))
+    else:
+        area_last = 0.0
+    
+    # Avoid division by zero
+    if area_first < 1e-10:
+        ratio = 0.0 if area_last < 1e-10 else float('inf')
+    else:
+        ratio = area_last / area_first
+    
+    # Determine convergence status
+    if ratio < 0.8:
+        status = 'converging'
+    elif ratio > 1.2:
+        status = 'diverging'
+    else:
+        status = 'stable'
+    
+    return {
+        'status': status,
+        'ratio': ratio,
+        'area_first_20pct': area_first,
+        'area_last_20pct': area_last
+    }
+
 def plot_simulation(telemetry, save_dir=None, show=True, run_id=None):
     if not telemetry:
         print("No telemetry data to plot.")
@@ -28,6 +85,9 @@ def plot_simulation(telemetry, save_dir=None, show=True, run_id=None):
     trust_P = [t['trust_weights']['P'] for t in telemetry]
     trust_S = [t['trust_weights']['S'] for t in telemetry]
     phase = [t['phase'] for t in telemetry]
+
+    # Compute convergence metric
+    convergence = compute_convergence_metric(telemetry)
 
     # Create subplots
     fig, axs = plt.subplots(3, 2, figsize=(15, 13))
@@ -77,8 +137,17 @@ def plot_simulation(telemetry, save_dir=None, show=True, run_id=None):
         plt.savefig(filepath, dpi=150, bbox_inches='tight')
         print(f"Saved diagnostic plot to {filepath}")
     
+    # Print convergence analysis
+    print("\n=== Convergence Analysis ===")
+    print(f"Status: {convergence['status'].upper()}")
+    print(f"Area ratio (last 20% / first 20%): {convergence['ratio']:.4f}")
+    print(f"First 20% bounding box area: {convergence['area_first_20pct']:.6f}")
+    print(f"Last 20% bounding box area: {convergence['area_last_20pct']:.6f}")
+    
     # Show plot if requested
     if show:
         plt.show()
     else:
         plt.close()
+    
+    return convergence
