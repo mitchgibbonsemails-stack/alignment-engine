@@ -13,11 +13,31 @@ class AlignmentEngine:
         self.phase = 0
         self.debug = debug
         self.run_id = str(uuid.uuid4())
+        
+        # Default parameter values
+        self.k_S = 0.1
+        self.k_D = 0.1
+        self.k_err = 0.05
+        self.lambda_Td = 0.01
+        
+        # Update from config if provided
         self.config = config or {}
+        if config:
+            self.k_S = config.get('k_S', self.k_S)
+            self.k_D = config.get('k_D', self.k_D)
+            self.k_err = config.get('k_err', self.k_err)
+            self.lambda_Td = config.get('lambda_Td', self.lambda_Td)
+        
         self.telemetry_meta = {
             'run_id': self.run_id,
             'config': self.config,
-            'start_time': datetime.now().isoformat()
+            'start_time': datetime.now().isoformat(),
+            'parameters': {
+                'k_S': self.k_S,
+                'k_D': self.k_D,
+                'k_err': self.k_err,
+                'lambda_Td': self.lambda_Td
+            }
         }
 
     def _clip_state(self):
