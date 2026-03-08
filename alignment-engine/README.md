@@ -71,10 +71,18 @@ alignment-engine/
 
 ## Core Concepts
 
-### State Variables (All ∈ [0,1])
-- **S_hat**: Signal strength estimate
-- **D_hat**: Distortion level estimate
-- **Trust Weights**: H,E,P,S (credibility components)
+### Canonical State Representation
+**X = [S, D, C, K, B, Tᵤ, Ω, Λ]**
+
+Where:
+- **S**: Signal clarity and reliability
+- **D**: Distortion level (mismatch with reality)
+- **C**: Constraint load (external limits)
+- **K**: Structural inertia (internal resistance)
+- **B**: System capacity (available resources)
+- **Tᵤ**: Usable time (time before degradation)
+- **Ω**: Option space (available actions)
+- **Λ**: Coupling strength (system interactions)
 
 ### Control Parameters
 - **k_S**: Signal processing gain

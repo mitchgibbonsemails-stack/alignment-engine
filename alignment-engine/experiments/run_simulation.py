@@ -50,8 +50,11 @@ def main():
 
     print("\nSimulation complete")
     print(f"Run ID: {engine.run_id}")
-    print(f"Final S_hat: {engine.x[0]:.4f}")
-    print(f"Final D_hat: {engine.x[1]:.4f}")
+    print(f"Final Signal (S): {engine.state['S']:.4f}")
+    print(f"Final Distortion (D): {engine.state['D']:.4f}")
+    print(f"Final Constraints (C): {engine.state['C']:.4f}")
+    print(f"Final Options (Ω): {engine.state['Omega']:.4f}")
+    print(f"Final Alignment Score: {engine.alignment_score:.4f}")
 
     # Plot diagnostics and collect convergence metric
     convergence = plot_simulation(engine.telemetry, save_dir=args.save_dir, show=args.show, run_id=engine.run_id)

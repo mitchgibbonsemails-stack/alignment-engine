@@ -5,15 +5,16 @@ from datetime import datetime
 class AlignmentEngine:
     def __init__(self, config=None, debug=False):
         # Initialize 8-node lattice state variables (normalized [0,1])
+        # Canonical state representation: X = [S, D, C, K, B, T_u, Ω, Λ]
         self.state = {
-            'S_hat': 0.5,      # Signal estimate (Node S)
-            'D_hat': 0.5,      # Distortion estimate (Node D) 
-            'option_space': 0.5,  # Available options (Node Ω)
-            'action': 0.5,     # Current action (Node A)
-            'K_constraint': 0.5,   # Structural constraints (Node K)
-            'B_capacity': 0.5,     # System capacity (Node B)
-            'Lambda_coupling': 0.5, # Coupling strength (Node Λ)
-            'T_time': 0.0      # Time evolution (Node T)
+            'S': 0.5,        # Signal clarity and reliability
+            'D': 0.5,        # Distortion level
+            'C': 0.5,        # Constraint load
+            'K': 0.5,        # Structural inertia
+            'B': 0.5,        # System capacity
+            'T_u': 0.5,      # Usable time available
+            'Omega': 0.5,    # Option space available
+            'Lambda': 0.5    # Coupling strength
         }
         
         self.telemetry = []
@@ -82,57 +83,56 @@ class AlignmentEngine:
             # Diamond Layer Architecture update cycle
             # Signal → Distortion → Options → Action → Structure → Capacity → Coupling → Time
             
-            # 1. Signal processing (Node S): Update signal estimate with noise
+            # 1. Signal processing (S): Update signal clarity with noise
             signal_noise = np.random.normal(0, 0.05)
-            self.state['S_hat'] += self.k_S * (self.S_true/20.0 - self.state['S_hat']) + signal_noise
+            self.state['S'] += self.k_S * (self.S_true/20.0 - self.state['S']) + signal_noise
             
-            # 2. Distortion detection (Node D): Measure error between signal and reality
-            distortion_error = abs(self.state['S_hat'] - self.S_true/20.0)
-            self.state['D_hat'] += self.k_D * (distortion_error - self.state['D_hat'])
+            # 2. Distortion detection (D): Measure error between signal and reality
+            distortion_error = abs(self.state['S'] - self.S_true/20.0)
+            self.state['D'] += self.k_D * (distortion_error - self.state['D'])
             
-            # 3. Options expansion/contraction (Node Ω): Based on distortion level
-            if self.state['D_hat'] < 0.3:  # Low distortion = expand options
-                self.state['option_space'] += 0.02
-            else:  # High distortion = contract options
-                self.state['option_space'] -= 0.02
+            # 3. Constraint load (C): External limits resisting change
+            # Constraints increase with distortion and decrease with capacity
+            constraint_pressure = 0.01 * (self.state['D'] - self.state['B'])
+            self.state['C'] += constraint_pressure
             
-            # 4. Action selection (Node A): Choose based on options and distortion
-            if self.state['option_space'] > 0.5 and self.state['D_hat'] < 0.4:
-                self.state['action'] = 0.7  # Positive action (+1)
-            elif self.state['D_hat'] > 0.6:
-                self.state['action'] = 0.3  # Negative action (-1)
+            # 4. Options expansion/contraction (Ω): Based on distortion and constraints
+            if self.state['D'] < 0.3 and self.state['C'] < 0.4:  # Low distortion & constraints = expand options
+                self.state['Omega'] += 0.02
+            else:  # High distortion or constraints = contract options
+                self.state['Omega'] -= 0.02
+            
+            # 5. Structural inertia (K): Accumulate constraints based on system rigidity
+            if self.state['C'] > 0.6:  # High constraints increase structural inertia
+                self.state['K'] += 0.01
+            else:  # Low constraints allow structural flexibility
+                self.state['K'] -= 0.005
+            
+            # 6. Capacity management (B): Resource allocation based on structure and constraints
+            capacity_efficiency = 1.0 - self.state['K'] - self.state['C']
+            self.state['B'] += 0.01 * capacity_efficiency
+            
+            # 7. Coupling dynamics (Λ): Interaction strength based on capacity and constraints
+            if self.state['B'] > 0.6 and self.state['C'] < 0.4:
+                self.state['Lambda'] += 0.005  # Strong coupling when capacity high and constraints low
             else:
-                self.state['action'] = 0.5  # Neutral action (0)
+                self.state['Lambda'] -= 0.005  # Weak coupling when capacity low or constraints high
             
-            # 5. Structure update (Node K): Accumulate constraints based on actions
-            if self.state['action'] > 0.6:  # Positive actions reduce constraints
-                self.state['K_constraint'] -= 0.01
-            else:  # Negative actions increase constraints
-                self.state['K_constraint'] += 0.01
+            # 8. Usable time (T_u): Time available before degradation
+            time_pressure = self.state['D'] + self.state['C'] - self.state['B']
+            self.state['T_u'] -= 0.01 * time_pressure
             
-            # 6. Capacity management (Node B): Resource allocation based on structure
-            capacity_efficiency = 1.0 - self.state['K_constraint']
-            self.state['B_capacity'] += 0.01 * capacity_efficiency
-            
-            # 7. Coupling dynamics (Node Λ): Interaction strength based on capacity
-            if self.state['B_capacity'] > 0.6:
-                self.state['Lambda_coupling'] += 0.005  # Strong coupling when capacity high
-            else:
-                self.state['Lambda_coupling'] -= 0.005  # Weak coupling when capacity low
-            
-            # 8. Time evolution (Node T): Increment time
-            self.state['T_time'] += 0.1
-            
-            # Update alignment score based on distortion reduction
-            alignment_improvement = max(0, 0.5 - self.state['D_hat'])
+            # Update alignment score based on distortion reduction and option preservation
+            alignment_improvement = max(0, 0.5 - self.state['D']) + max(0, self.state['Omega'] - 0.4)
             self.alignment_score += 0.01 * alignment_improvement
             
-            # Update trust weights based on prediction accuracy
-            prediction_error = abs(self.state['S_hat'] - self.S_true/20.0)
+            # Update trust weights based on prediction accuracy and constraint respect
+            prediction_error = abs(self.state['S'] - self.S_true/20.0)
+            constraint_violation = max(0, self.state['C'] - 0.8)
             for k in self.trust_weights:
-                if prediction_error < 0.1:  # Good prediction
+                if prediction_error < 0.1 and constraint_violation < 0.1:  # Good prediction & constraint respect
                     self.trust_weights[k] += 0.005
-                else:  # Poor prediction
+                else:  # Poor prediction or constraint violation
                     self.trust_weights[k] -= 0.005
             
             self.phase += 1

@@ -30,10 +30,12 @@ def test_parameter_sweep_runs():
             assert 'k_D' in result
             assert 'k_err' in result
             assert 'lambda_Td' in result
-            assert 'final_S_hat' in result
-            assert 'final_D_hat' in result
+            assert 'final_S' in result
+            assert 'final_D' in result
+            assert 'final_C' in result
+            assert 'final_Omega' in result
             assert 'convergence_status' in result
-            assert 'area_ratio' in result
+            assert 'volume_ratio' in result
             assert 'final_alignment_score' in result
 
 
@@ -68,8 +70,10 @@ def test_parameter_sweep_csv_output():
         assert len(rows) == 16, f"Expected 16 data rows, got {len(rows)}"
         
         # Check that all expected columns are present
-        expected_columns = ['run_id', 'k_S', 'k_D', 'k_err', 'lambda_Td', 'final_S_hat',
-                           'final_D_hat', 'convergence_status', 'area_ratio', 'final_alignment_score']
+        expected_columns = ['run_id', 'k_S', 'k_D', 'k_err', 'lambda_Td', 'final_S',
+                           'final_D', 'final_C', 'final_K', 'final_B', 'final_T_u',
+                           'final_Omega', 'final_Lambda',
+                           'convergence_status', 'volume_ratio', 'final_alignment_score']
         for col in expected_columns:
             assert col in rows[0], f"Missing column: {col}"
 
@@ -127,6 +131,6 @@ def test_convergence_status_recorded():
             assert status in ['converging', 'diverging', 'stable', 'insufficient_data'], \
                 f"Invalid convergence status: {status}"
             
-            # Area ratio should be valid
-            ratio = result['area_ratio']
-            assert isinstance(ratio, (int, float)), f"Area ratio should be numeric: {ratio}"
+            # Volume ratio should be valid
+            ratio = result['volume_ratio']
+            assert isinstance(ratio, (int, float)), f"Volume ratio should be numeric: {ratio}"

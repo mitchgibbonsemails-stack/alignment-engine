@@ -12,13 +12,13 @@ def test_state_stays_in_bounds():
     
     # Check that all telemetry values are finite
     for t in engine.telemetry:
-        assert np.isfinite(t['S_hat']), f"S_hat is not finite: {t['S_hat']}"
-        assert np.isfinite(t['D_hat']), f"D_hat is not finite: {t['D_hat']}"
+        assert np.isfinite(t['S']), f"S is not finite: {t['S']}"
+        assert np.isfinite(t['D']), f"D is not finite: {t['D']}"
         assert np.isfinite(t['alignment_score']), f"alignment_score is not finite: {t['alignment_score']}"
         
         # Check bounds [0, 1]
-        assert 0 <= t['S_hat'] <= 1, f"S_hat out of bounds: {t['S_hat']}"
-        assert 0 <= t['D_hat'] <= 1, f"D_hat out of bounds: {t['D_hat']}"
+        assert 0 <= t['S'] <= 1, f"S out of bounds: {t['S']}"
+        assert 0 <= t['D'] <= 1, f"D out of bounds: {t['D']}"
         assert 0 <= t['alignment_score'] <= 1, f"alignment_score out of bounds: {t['alignment_score']}"
 
 
@@ -44,10 +44,10 @@ def test_no_nans_in_telemetry():
     engine.run_simulation(num_steps=50, seed=42)
     
     for i, t in enumerate(engine.telemetry):
-        if np.isnan(t['S_hat']):
-            raise AssertionError(f"NaN in S_hat at step {i}")
-        if np.isnan(t['D_hat']):
-            raise AssertionError(f"NaN in D_hat at step {i}")
+        if np.isnan(t['S']):
+            raise AssertionError(f"NaN in S at step {i}")
+        if np.isnan(t['D']):
+            raise AssertionError(f"NaN in D at step {i}")
         if np.isnan(t['alignment_score']):
             raise AssertionError(f"NaN in alignment_score at step {i}")
 
@@ -61,8 +61,10 @@ def test_engine_with_debug_sanity_checks():
     engine.run_simulation(num_steps=50, seed=42)
     
     # Verify final state is valid
-    assert 0 <= engine.x[0] <= 1
-    assert 0 <= engine.x[1] <= 1
+    assert 0 <= engine.state['S'] <= 1
+    assert 0 <= engine.state['D'] <= 1
+    assert 0 <= engine.state['C'] <= 1
+    assert 0 <= engine.state['Omega'] <= 1
     assert len(engine.telemetry) == 50
 
 
@@ -78,8 +80,8 @@ def test_reproducibility_with_seed():
     
     # Check that telemetry matches
     for t1, t2 in zip(engine1.telemetry, engine2.telemetry):
-        assert t1['S_hat'] == t2['S_hat'], "S_hat differs between runs"
-        assert t1['D_hat'] == t2['D_hat'], "D_hat differs between runs"
+        assert t1['S'] == t2['S'], "S differs between runs"
+        assert t1['D'] == t2['D'], "D differs between runs"
         assert t1['alignment_score'] == t2['alignment_score'], "alignment_score differs between runs"
 
 
@@ -95,8 +97,8 @@ def test_convergence_metric_computation():
     # Check that required keys are present
     assert 'status' in convergence
     assert 'ratio' in convergence
-    assert 'area_first_20pct' in convergence
-    assert 'area_last_20pct' in convergence
+    assert 'volume_first_20pct' in convergence
+    assert 'volume_last_20pct' in convergence
     
     # Status should be one of the valid values
     assert convergence['status'] in ['converging', 'diverging', 'stable', 'insufficient_data']
@@ -105,6 +107,6 @@ def test_convergence_metric_computation():
     if convergence['ratio'] is not None:
         assert convergence['ratio'] >= 0.0, f"Convergence ratio should be non-negative: {convergence['ratio']}"
     
-    # Areas should be non-negative
-    assert convergence['area_first_20pct'] >= 0.0
-    assert convergence['area_last_20pct'] >= 0.0
+    # Volumes should be non-negative
+    assert convergence['volume_first_20pct'] >= 0.0
+    assert convergence['volume_last_20pct'] >= 0.0

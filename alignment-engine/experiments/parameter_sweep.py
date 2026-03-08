@@ -76,10 +76,16 @@ def run_parameter_sweep(k_S_range, k_D_range, k_err_range, lambda_Td_range,
                         'k_D': k_D,
                         'k_err': k_err,
                         'lambda_Td': lambda_Td,
-                        'final_S_hat': engine.x[0],
-                        'final_D_hat': engine.x[1],
+                        'final_S': engine.state['S'],
+                        'final_D': engine.state['D'],
+                        'final_C': engine.state['C'],
+                        'final_K': engine.state['K'],
+                        'final_B': engine.state['B'],
+                        'final_T_u': engine.state['T_u'],
+                        'final_Omega': engine.state['Omega'],
+                        'final_Lambda': engine.state['Lambda'],
                         'convergence_status': convergence['status'],
-                        'area_ratio': convergence['ratio'] if convergence['ratio'] is not None else -1.0,
+                        'volume_ratio': convergence['ratio'] if convergence['ratio'] is not None else -1.0,
                         'final_alignment_score': engine.alignment_score
                     }
                     results.append(result)
@@ -87,8 +93,10 @@ def run_parameter_sweep(k_S_range, k_D_range, k_err_range, lambda_Td_range,
     # Write CSV if requested
     if write_csv:
         csv_path = os.path.join(save_dir, "sweep_results.csv")
-        fieldnames = ['run_id', 'k_S', 'k_D', 'k_err', 'lambda_Td', 'final_S_hat', 
-                      'final_D_hat', 'convergence_status', 'area_ratio', 'final_alignment_score']
+        fieldnames = ['run_id', 'k_S', 'k_D', 'k_err', 'lambda_Td', 'final_S', 
+                      'final_D', 'final_C', 'final_K', 'final_B', 'final_T_u',
+                      'final_Omega', 'final_Lambda',
+                      'convergence_status', 'volume_ratio', 'final_alignment_score']
         
         with open(csv_path, 'w', newline='') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
