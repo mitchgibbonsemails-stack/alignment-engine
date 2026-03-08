@@ -4,7 +4,18 @@ from datetime import datetime
 
 class AlignmentEngine:
     def __init__(self, config=None, debug=False):
-        self.x = np.array([0.0, 0.0])
+        # Initialize 8-node lattice state variables (normalized [0,1])
+        self.state = {
+            'S_hat': 0.5,      # Signal estimate (Node S)
+            'D_hat': 0.5,      # Distortion estimate (Node D) 
+            'option_space': 0.5,  # Available options (Node Ω)
+            'action': 0.5,     # Current action (Node A)
+            'K_constraint': 0.5,   # Structural constraints (Node K)
+            'B_capacity': 0.5,     # System capacity (Node B)
+            'Lambda_coupling': 0.5, # Coupling strength (Node Λ)
+            'T_time': 0.0      # Time evolution (Node T)
+        }
+        
         self.telemetry = []
         self.S_true = 10.0
         self.D_true = 10.0
@@ -42,15 +53,17 @@ class AlignmentEngine:
 
     def _clip_state(self):
         """Clip state variables to [0, 1] to maintain invariants."""
-        self.x = np.clip(self.x, 0.0, 1.0)
+        for key in self.state:
+            self.state[key] = np.clip(self.state[key], 0.0, 1.0)
         self.alignment_score = np.clip(self.alignment_score, 0.0, 1.0)
     
     def _sanity_check(self):
         """Assert no NaNs and state within bounds."""
-        if np.any(np.isnan(self.x)):
-            raise ValueError(f"NaN detected in state: {self.x}")
-        if np.any(self.x < 0) or np.any(self.x > 1):
-            raise ValueError(f"State out of bounds [0,1]: {self.x}")
+        for key, value in self.state.items():
+            if np.isnan(value):
+                raise ValueError(f"NaN detected in state[{key}]: {value}")
+            if value < 0 or value > 1:
+                raise ValueError(f"State variable {key}={value} out of bounds [0,1]")
         if np.isnan(self.alignment_score):
             raise ValueError("NaN detected in alignment_score")
         for k, v in self.trust_weights.items():
@@ -65,28 +78,83 @@ class AlignmentEngine:
                 print(f"Step {step}")
             if shocks and step in shocks:
                 print(f"Shock: {shocks[step]}")
-            # Dummy update for demonstration
-            self.x += np.random.random(2) * 0.1
-            self.alignment_score += 0.01
-            self.phase += 1
-            # Update trust weights randomly
+            
+            # Diamond Layer Architecture update cycle
+            # Signal → Distortion → Options → Action → Structure → Capacity → Coupling → Time
+            
+            # 1. Signal processing (Node S): Update signal estimate with noise
+            signal_noise = np.random.normal(0, 0.05)
+            self.state['S_hat'] += self.k_S * (self.S_true/20.0 - self.state['S_hat']) + signal_noise
+            
+            # 2. Distortion detection (Node D): Measure error between signal and reality
+            distortion_error = abs(self.state['S_hat'] - self.S_true/20.0)
+            self.state['D_hat'] += self.k_D * (distortion_error - self.state['D_hat'])
+            
+            # 3. Options expansion/contraction (Node Ω): Based on distortion level
+            if self.state['D_hat'] < 0.3:  # Low distortion = expand options
+                self.state['option_space'] += 0.02
+            else:  # High distortion = contract options
+                self.state['option_space'] -= 0.02
+            
+            # 4. Action selection (Node A): Choose based on options and distortion
+            if self.state['option_space'] > 0.5 and self.state['D_hat'] < 0.4:
+                self.state['action'] = 0.7  # Positive action (+1)
+            elif self.state['D_hat'] > 0.6:
+                self.state['action'] = 0.3  # Negative action (-1)
+            else:
+                self.state['action'] = 0.5  # Neutral action (0)
+            
+            # 5. Structure update (Node K): Accumulate constraints based on actions
+            if self.state['action'] > 0.6:  # Positive actions reduce constraints
+                self.state['K_constraint'] -= 0.01
+            else:  # Negative actions increase constraints
+                self.state['K_constraint'] += 0.01
+            
+            # 6. Capacity management (Node B): Resource allocation based on structure
+            capacity_efficiency = 1.0 - self.state['K_constraint']
+            self.state['B_capacity'] += 0.01 * capacity_efficiency
+            
+            # 7. Coupling dynamics (Node Λ): Interaction strength based on capacity
+            if self.state['B_capacity'] > 0.6:
+                self.state['Lambda_coupling'] += 0.005  # Strong coupling when capacity high
+            else:
+                self.state['Lambda_coupling'] -= 0.005  # Weak coupling when capacity low
+            
+            # 8. Time evolution (Node T): Increment time
+            self.state['T_time'] += 0.1
+            
+            # Update alignment score based on distortion reduction
+            alignment_improvement = max(0, 0.5 - self.state['D_hat'])
+            self.alignment_score += 0.01 * alignment_improvement
+            
+            # Update trust weights based on prediction accuracy
+            prediction_error = abs(self.state['S_hat'] - self.S_true/20.0)
             for k in self.trust_weights:
-                self.trust_weights[k] += np.random.random() * 0.01
+                if prediction_error < 0.1:  # Good prediction
+                    self.trust_weights[k] += 0.005
+                else:  # Poor prediction
+                    self.trust_weights[k] -= 0.005
+            
+            self.phase += 1
+            
             # Clip state to maintain invariants
             self._clip_state()
+            
             # Sanity check if debug enabled
             if self.debug:
                 self._sanity_check()
+            
             # Collect telemetry
-            self.telemetry.append({
-                'S_hat': self.x[0],
+            telemetry_entry = self.state.copy()
+            telemetry_entry.update({
                 'S_true': self.S_true,
-                'D_hat': self.x[1],
                 'D_true': self.D_true,
                 'alignment_score': self.alignment_score,
                 'trust_weights': self.trust_weights.copy(),
                 'phase': self.phase
             })
+            self.telemetry.append(telemetry_entry)
+            
         if verbose:
             print("Simulation done")
         self.telemetry_meta['end_time'] = datetime.now().isoformat()
